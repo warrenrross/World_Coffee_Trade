@@ -2,6 +2,8 @@
 
 An interactive world map visualizing bilateral coffee bean trade flows between countries from 1995 to 2024. Step through each year to watch trade relationships evolve — which countries dominate exports, how import patterns shift across continents, and where the biggest individual flows run.
 
+This repo is also intended as a demonstration of **agentic engineering** — building software collaboratively with an AI agent. Context files (`CLAUDE.md`, `memory.md`, `skill.md`) are left in the repo intentionally so that anyone can clone it, point their preferred AI coding agent at it, and have a fully-informed conversation about the project without manual onboarding. The agent already knows the data schema, architecture decisions, and key constraints.
+
 ---
 
 ## What It Shows

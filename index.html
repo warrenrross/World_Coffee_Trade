@@ -61,7 +61,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
   flex-shrink:0;min-width:46px;text-align:right}
 
 /* Tooltip */
-#tip{position:absolute;pointer-events:none;background:rgba(22,27,34,.97);
+#tip{position:absolute;top:14px;left:14px;pointer-events:none;background:rgba(22,27,34,.97);
   border:1px solid var(--border);border-radius:8px;padding:10px 13px;
   font-size:12px;line-height:1.6;z-index:30;display:none;
   backdrop-filter:blur(10px);max-width:230px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
@@ -611,15 +611,7 @@ function showFlowTip(event, d) {
 
 function hideTip() { tip.style.display = 'none'; }
 
-function positionTip(e) {
-  const r = mapWrap.getBoundingClientRect();
-  let x = e.clientX - r.left + 14, y = e.clientY - r.top + 14;
-  if (x + 240 > r.width)  x = e.clientX - r.left - 240;
-  if (y + 160 > r.height) y = e.clientY - r.top - 160;
-  tip.style.left = x + 'px'; tip.style.top = y + 'px';
-}
-
-svg.on('mousemove', e => { if (tip.style.display === 'block') positionTip(e); });
+svg.on('mousemove', null);
 
 // ── Panel ──────────────────────────────────────────────────────────────────
 function updatePanel(flows) {

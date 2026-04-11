@@ -1,0 +1,21 @@
+# ── Private / sensitive ──────────────────────────────────────────────────────
+# local-only notes: credentials, deploy details, internal URLs
+private.md
+
+# ── QA / local screenshots ───────────────────────────────────────────────────
+# Playwright visual-QA screenshots; generated locally, not for version control
+qa*.png
+
+# ── macOS system files ────────────────────────────────────────────────────────
+.DS_Store
+__MACOSX/
+
+# ── Python / Jupyter (if EDA notebooks are added here later) ─────────────────
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*_profile_report.html
+*_sweetviz_report.html
+
+# ── Node (if a dev server or tooling is added) ────────────────────────────────
+node_modules/

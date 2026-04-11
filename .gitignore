@@ -6,6 +6,9 @@ private.md
 # Playwright visual-QA screenshots; generated locally, not for version control
 qa*.png
 
+# ── Design annotations / editorial PDFs ──────────────────────────────────────
+*.pdf
+
 # ── macOS system files ────────────────────────────────────────────────────────
 .DS_Store
 __MACOSX/

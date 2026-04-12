@@ -488,15 +488,30 @@ document.getElementById('flow-top10').addEventListener('click', () => {
 });
 
 // ── Panel toggle ───────────────────────────────────────────────────────────
-// Panel starts collapsed on mobile (touch devices), open on desktop.
-// Toggle button works on all screen sizes.
+// Panel always starts open. [≡] in panel header manually collapses/expands the list.
 const panel = document.getElementById('panel');
-if (window.matchMedia('(hover: none)').matches) {
-  panel.classList.add('panel-collapsed');
-}
 document.getElementById('panel-toggle').addEventListener('click', () => {
   panel.classList.toggle('panel-collapsed');
 });
+
+// ── Fullscreen toggle ──────────────────────────────────────────────────────
+const btnFs = document.getElementById('btn-fullscreen');
+if (!document.fullscreenEnabled) {
+  btnFs.style.display = 'none';
+} else {
+  btnFs.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const full = !!document.fullscreenElement;
+    btnFs.querySelector('.ico-expand').style.display  = full ? 'none' : '';
+    btnFs.querySelector('.ico-collapse').style.display = full ? '' : 'none';
+  });
+}
 
 document.addEventListener('keydown', e => {
   if (e.key==='ArrowLeft')  { stop(); yi=Math.max(0,yi-1); render(); }

@@ -6,7 +6,7 @@
   --font:'Inter',system-ui,sans-serif;
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden}
-#app{display:grid;grid-template-rows:52px 1fr 68px;height:100vh}
+#app{display:grid;grid-template-rows:52px 1fr 68px;height:100vh;height:100dvh}
 
 /* Header */
 header{display:flex;align-items:center;gap:12px;padding:0 18px;

@@ -557,11 +557,9 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
       return;
     }
 
-    // Find nearest corner to current legend center
+    // Pick corner whose direction from origin best matches the drag direction (dot product)
     const mapRect = document.getElementById('map-wrap').getBoundingClientRect();
     const legRect = legend.getBoundingClientRect();
-    const cx = legRect.left + legRect.width  / 2 - mapRect.left;
-    const cy = legRect.top  + legRect.height / 2 - mapRect.top;
     const lw = legRect.width, lh = legRect.height, p = 14;
     const mw = mapRect.width,  mh = mapRect.height;
     const anchors = {
@@ -569,14 +567,13 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
       tl: [p + lw/2,      p  + lh/2    ],
       br: [mw - p - lw/2, mh - p - lh/2],
     };
-    // On wide screens bias br: multiply its distance by 0.75 so it wins sooner
-    const brWeight = mw > mh ? 0.75 : 0.5;
-    const weights  = { bl: 1, tl: 1, br: brWeight };
-    let nearest = 'bl', best = Infinity;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    const [ox, oy] = anchors[originPos];
+    let nearest = 'bl', best = -Infinity;
     for (const [pos, [ax, ay]] of Object.entries(anchors)) {
       if (pos === originPos) continue; // never snap back to where you started
-      const d = Math.hypot(cx - ax, cy - ay) * weights[pos];
-      if (d < best) { best = d; nearest = pos; }
+      const score = dx * (ax - ox) + dy * (ay - oy); // dot product: drag · direction-to-corner
+      if (score > best) { best = score; nearest = pos; }
     }
     applyPos(nearest);
     localStorage.setItem(KEY, nearest);

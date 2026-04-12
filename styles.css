@@ -22,7 +22,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
 
 /* Map */
 #map-wrap{position:relative;overflow:hidden}
-#map-svg{width:100%;height:100%;display:block;cursor:crosshair}
+#map-svg{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
 .country{stroke:#21262d;stroke-width:.35px;transition:stroke .15s,stroke-width .15s}
 .country:hover{stroke:#fff;stroke-width:1px}
 .country.dimmed{opacity:.35}
@@ -33,7 +33,9 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
 /* Side panel */
 #panel{position:absolute;top:10px;right:10px;width:236px;
   background:rgba(22,27,34,.94);border:1px solid var(--border);
-  border-radius:10px;backdrop-filter:blur(14px);overflow:hidden;z-index:5}
+  border-radius:10px;backdrop-filter:blur(14px);overflow:hidden;z-index:5;
+  transition:transform 0.25s ease}
+#panel.panel-collapsed{transform:translateX(calc(100% + 20px))}
 .panel-head{padding:11px 13px 7px;border-bottom:1px solid var(--border)}
 .panel-year{font-size:30px;font-weight:800;letter-spacing:-.04em;color:var(--amber);line-height:1}
 .panel-sub{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
@@ -105,6 +107,20 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
 .seg-btn.on-blue{background:rgba(88,166,255,.15);color:var(--blue);border-color:var(--blue)}
 .seg-btn.on-amber{background:rgba(212,161,68,.15);color:var(--amber);border-color:var(--amber)}
 .divv{width:1px;height:22px;background:var(--border);flex-shrink:0}
+
+/* ── Mobile (≤640px) ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Hide source link to save header space */
+  .src{display:none}
+  /* Larger tap targets for control buttons */
+  .ctrl-btn{width:40px;height:40px}
+  /* Larger segment buttons (speed, flow filter) */
+  .seg-btn{font-size:11px;padding:7px 11px}
+  /* Slightly larger year label */
+  .yr-lbl{font-size:15px}
+  /* Tighten controls gap on narrow screens */
+  #controls{gap:8px;padding:0 12px}
+}
 
 /* Loading */
 #loading{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;

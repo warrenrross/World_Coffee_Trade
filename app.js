@@ -73,8 +73,20 @@ function initMap(topo) {
     .scale(W / 7.2).translate([W / 2.1, H / 1.95]);
   pathGen = d3.geoPath().projection(projection);
 
+  // Single container group for all map layers — zoom transform applies here only,
+  // leaving HTML overlays (#panel, #tip, #legend) completely unaffected.
+  const mapG  = svg.append('g');
+  gGraticule  = mapG.append('g');
+  gCountries  = mapG.append('g');
+  gFlows      = mapG.append('g');
+
+  // Pan + pinch-zoom on the map only
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .on('zoom', event => mapG.attr('transform', event.transform));
+  svg.call(zoom);
+
   // Graticule
-  gGraticule = svg.append('g');
   gGraticule.append('path')
     .datum({type:'Sphere'})
     .attr('d', pathGen)
@@ -83,9 +95,6 @@ function initMap(topo) {
     .datum(d3.geoGraticule()())
     .attr('d', pathGen)
     .attr('fill','none').attr('stroke','rgba(255,255,255,.03)').attr('stroke-width',.5);
-
-  gCountries = svg.append('g');
-  gFlows     = svg.append('g');
 
   // Build ISO lookup from world-atlas numeric ids using a comprehensive map
   const NUM_TO_ISO = {
@@ -124,20 +133,34 @@ function initMap(topo) {
   });
 
   // Draw countries
-  gCountries.selectAll('.country')
+  const countries = gCountries.selectAll('.country')
     .data(features)
     .join('path')
     .attr('class','country')
     .attr('d', pathGen)
-    .attr('fill','#1c2128')
-    .on('mousemove', onCountryHover)
-    .on('mouseleave', onCountryLeave);
+    .attr('fill','#1c2128');
 
-  // Resize handler
+  // Touch devices: tap country to show detail, tap SVG background to dismiss.
+  // Desktop: mousemove/mouseleave for hover detail.
+  // d3.zoom distinguishes a tap (no movement) from a drag, so 'click' fires correctly on mobile.
+  if (window.matchMedia('(hover: none)').matches) {
+    countries.on('click', (event, d) => {
+      event.stopPropagation();
+      onCountryHover(event, d);
+    });
+    svg.on('click', () => onCountryLeave());
+  } else {
+    countries
+      .on('mousemove', onCountryHover)
+      .on('mouseleave', onCountryLeave);
+  }
+
+  // Resize handler — reset zoom so the new viewBox matches the reset state
   window.addEventListener('resize', () => {
     W = wrap.clientWidth; H = wrap.clientHeight;
     svg.attr('viewBox', `0 0 ${W} ${H}`);
     projection.scale(W/7.2).translate([W/2.1, H/1.95]);
+    svg.call(zoom.transform, d3.zoomIdentity);
     // Recompute centroids
     features.forEach(f => {
       const iso = NUM_TO_ISO[+f.id];
@@ -462,6 +485,17 @@ document.getElementById('flow-top10').addEventListener('click', () => {
   document.getElementById('flow-top10').classList.add('on-amber');
   document.getElementById('flow-all').classList.remove('on-amber');
   render();
+});
+
+// ── Panel toggle ───────────────────────────────────────────────────────────
+// Panel starts collapsed on mobile (touch devices), open on desktop.
+// Toggle button works on all screen sizes.
+const panel = document.getElementById('panel');
+if (window.matchMedia('(hover: none)').matches) {
+  panel.classList.add('panel-collapsed');
+}
+document.getElementById('panel-toggle').addEventListener('click', () => {
+  panel.classList.toggle('panel-collapsed');
 });
 
 document.addEventListener('keydown', e => {

@@ -494,14 +494,34 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
   panel.classList.toggle('panel-collapsed');
 });
 
-// ── Mobile legend relocation ───────────────────────────────────────────────
-// On narrow screens move #legend from #map-wrap into the controls footer,
-// just before #divv-flow. CSS hides it in the map and styles it inline.
-if (window.matchMedia('(max-width: 640px)').matches) {
-  const legend   = document.getElementById('legend');
-  const divvFlow = document.getElementById('divv-flow');
-  document.getElementById('controls').insertBefore(legend, divvFlow);
-}
+// ── Legend position cycle ──────────────────────────────────────────────────
+// Tap/click legend to cycle: bottom-left → top-left → bottom-right → repeat.
+// Position persists across refreshes via localStorage.
+(function() {
+  const legend    = document.getElementById('legend');
+  const POSITIONS = ['bl', 'tl', 'br'];
+  const CLASS     = { tl: 'leg-tl', br: 'leg-br' }; // bl = no extra class (base style)
+  const KEY       = 'coffee-legend-pos';
+
+  function applyPos(pos) {
+    legend.classList.remove('leg-tl', 'leg-br');
+    if (CLASS[pos]) legend.classList.add(CLASS[pos]);
+  }
+
+  const saved = localStorage.getItem(KEY);
+  if (saved && POSITIONS.includes(saved)) applyPos(saved);
+
+  legend.addEventListener('click', () => {
+    const cur = POSITIONS.find(p =>
+      p === 'bl'
+        ? !legend.classList.contains('leg-tl') && !legend.classList.contains('leg-br')
+        : legend.classList.contains(CLASS[p])
+    ) || 'bl';
+    const next = POSITIONS[(POSITIONS.indexOf(cur) + 1) % POSITIONS.length];
+    applyPos(next);
+    localStorage.setItem(KEY, next);
+  });
+}());
 
 // ── Fullscreen toggle ──────────────────────────────────────────────────────
 const btnFs = document.getElementById('btn-fullscreen');

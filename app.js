@@ -570,7 +570,7 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
       br: [mw - p - lw/2, mh - p - lh/2],
     };
     // On wide screens bias br: multiply its distance by 0.75 so it wins sooner
-    const brWeight = mw > mh ? 0.75 : 1;
+    const brWeight = mw > mh ? 0.75 : 0.5;
     const weights  = { bl: 1, tl: 1, br: brWeight };
     let nearest = 'bl', best = Infinity;
     for (const [pos, [ax, ay]] of Object.entries(anchors)) {

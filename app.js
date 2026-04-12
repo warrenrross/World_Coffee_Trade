@@ -501,7 +501,7 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
   const legend    = document.getElementById('legend');
   const CLASS     = { tl: 'leg-tl', br: 'leg-br' }; // bl = no extra class (base style)
   const KEY       = 'coffee-legend-pos';
-  const THRESHOLD = 20; // px
+  const THRESHOLD = 10; // px
 
   function getCurrentPos() {
     if (legend.classList.contains('leg-tl')) return 'tl';

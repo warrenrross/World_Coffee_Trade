@@ -24,13 +24,6 @@
   <span class="badge">BACI · HS92 · 1995–2024</span>
   <a class="badge" href="https://github.com/warrenrross/World_Coffee_Trade" target="_blank" style="text-decoration:none;cursor:pointer">link to repo</a>
   <div class="hdr-right">
-    <button id="panel-toggle" class="ctrl-btn" title="Toggle flow list" aria-label="Toggle flow list">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <rect x="1" y="2"  width="12" height="1.5" rx=".75" fill="currentColor"/>
-        <rect x="1" y="6"  width="12" height="1.5" rx=".75" fill="currentColor"/>
-        <rect x="1" y="10" width="12" height="1.5" rx=".75" fill="currentColor"/>
-      </svg>
-    </button>
     <a class="src" href="https://www.cepii.fr/CEPII/en/bdd_modele/bdd_modele_item.asp?id=37" target="_blank">Source: CEPII BACI v202601</a>
   </div>
 </header>
@@ -58,8 +51,17 @@
 
   <div id="panel">
     <div class="panel-head">
-      <div class="panel-year" id="panel-year">2023</div>
-      <div class="panel-sub">Top trade flows</div>
+      <div>
+        <div class="panel-year" id="panel-year">2023</div>
+        <div class="panel-sub">Top trade flows</div>
+      </div>
+      <button id="panel-toggle" class="ctrl-btn" title="Toggle flow list" aria-label="Toggle flow list">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <rect x="1" y="2"  width="12" height="1.5" rx=".75" fill="currentColor"/>
+          <rect x="1" y="6"  width="12" height="1.5" rx=".75" fill="currentColor"/>
+          <rect x="1" y="10" width="12" height="1.5" rx=".75" fill="currentColor"/>
+        </svg>
+      </button>
     </div>
     <ul class="flow-list" id="flow-list"></ul>
   </div>

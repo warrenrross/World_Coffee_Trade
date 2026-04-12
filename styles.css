@@ -72,9 +72,10 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
   background:rgba(22,27,34,.9);border:1px solid var(--border);
   border-radius:8px;padding:9px 13px;font-size:11px;z-index:5;
   backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:6px;
-  cursor:pointer;user-select:none;
-  transition:top .2s,bottom .2s,left .2s,right .2s}
-/* Legend corner positions — tap/click to cycle */
+  cursor:grab;user-select:none;
+  transition:top .2s,bottom .2s,left .2s,right .2s,box-shadow .15s}
+#legend.leg-dragging{cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,.5);transition:none}
+/* Legend corner positions — drag to reposition */
 #legend.leg-tl{bottom:auto;top:14px;left:14px;right:auto}
 #legend.leg-br{bottom:14px;right:14px;left:auto;top:auto}
 .leg-title{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}

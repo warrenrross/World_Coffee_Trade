@@ -494,32 +494,96 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
   panel.classList.toggle('panel-collapsed');
 });
 
-// ── Legend position cycle ──────────────────────────────────────────────────
-// Tap/click legend to cycle: bottom-left → top-left → bottom-right → repeat.
-// Position persists across refreshes via localStorage.
+// ── Legend drag-to-corner ──────────────────────────────────────────────────
+// Drag legend to reposition. Under 20px travel → snaps back to origin.
+// Over 20px → snaps to nearest of three corners. Persists via localStorage.
 (function() {
   const legend    = document.getElementById('legend');
-  const POSITIONS = ['bl', 'tl', 'br'];
   const CLASS     = { tl: 'leg-tl', br: 'leg-br' }; // bl = no extra class (base style)
   const KEY       = 'coffee-legend-pos';
+  const THRESHOLD = 20; // px
+
+  function getCurrentPos() {
+    if (legend.classList.contains('leg-tl')) return 'tl';
+    if (legend.classList.contains('leg-br')) return 'br';
+    return 'bl';
+  }
 
   function applyPos(pos) {
     legend.classList.remove('leg-tl', 'leg-br');
     if (CLASS[pos]) legend.classList.add(CLASS[pos]);
+    // Clear inline drag styles so CSS corner classes take over
+    legend.style.left = legend.style.top = legend.style.right = legend.style.bottom = '';
   }
 
+  // Restore saved position instantly on load (no transition yet)
   const saved = localStorage.getItem(KEY);
-  if (saved && POSITIONS.includes(saved)) applyPos(saved);
+  if (saved && (saved === 'tl' || saved === 'br')) applyPos(saved);
 
-  legend.addEventListener('click', () => {
-    const cur = POSITIONS.find(p =>
-      p === 'bl'
-        ? !legend.classList.contains('leg-tl') && !legend.classList.contains('leg-br')
-        : legend.classList.contains(CLASS[p])
-    ) || 'bl';
-    const next = POSITIONS[(POSITIONS.indexOf(cur) + 1) % POSITIONS.length];
-    applyPos(next);
-    localStorage.setItem(KEY, next);
+  // Drag state
+  let dragging = false, startX = 0, startY = 0, grabX = 0, grabY = 0, originPos = 'bl';
+
+  legend.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const mapRect = document.getElementById('map-wrap').getBoundingClientRect();
+    const legRect = legend.getBoundingClientRect();
+    grabX    = e.clientX - legRect.left;   // where within legend we grabbed
+    grabY    = e.clientY - legRect.top;
+    startX   = e.clientX;
+    startY   = e.clientY;
+    originPos = getCurrentPos();
+    dragging  = true;
+    legend.classList.add('leg-dragging');
+    legend.setPointerCapture(e.pointerId);
+  });
+
+  legend.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const mapRect = document.getElementById('map-wrap').getBoundingClientRect();
+    legend.style.left   = (e.clientX - mapRect.left - grabX) + 'px';
+    legend.style.top    = (e.clientY - mapRect.top  - grabY) + 'px';
+    legend.style.right  = 'auto';
+    legend.style.bottom = 'auto';
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    legend.classList.remove('leg-dragging'); // re-enables transition
+
+    const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+    if (dist < THRESHOLD) {
+      applyPos(originPos); // snap back
+      return;
+    }
+
+    // Find nearest corner to current legend center
+    const mapRect = document.getElementById('map-wrap').getBoundingClientRect();
+    const legRect = legend.getBoundingClientRect();
+    const cx = legRect.left + legRect.width  / 2 - mapRect.left;
+    const cy = legRect.top  + legRect.height / 2 - mapRect.top;
+    const lw = legRect.width, lh = legRect.height, p = 14;
+    const mw = mapRect.width,  mh = mapRect.height;
+    const anchors = {
+      bl: [p + lw/2,      mh - p - lh/2],
+      tl: [p + lw/2,      p  + lh/2    ],
+      br: [mw - p - lw/2, mh - p - lh/2],
+    };
+    let nearest = 'bl', best = Infinity;
+    for (const [pos, [ax, ay]] of Object.entries(anchors)) {
+      const d = Math.hypot(cx - ax, cy - ay);
+      if (d < best) { best = d; nearest = pos; }
+    }
+    applyPos(nearest);
+    localStorage.setItem(KEY, nearest);
+  }
+
+  legend.addEventListener('pointerup',     endDrag);
+  legend.addEventListener('pointercancel', () => {
+    if (!dragging) return;
+    dragging = false;
+    legend.classList.remove('leg-dragging');
+    applyPos(originPos);
   });
 }());
 

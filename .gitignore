@@ -6,6 +6,12 @@ secure.md
 # ── QA / local screenshots ───────────────────────────────────────────────────
 # Playwright visual-QA screenshots; generated locally, not for version control
 qa*.png
+# Design annotation and reference images used during development
+mobile_view.PNG
+move_collapse_button.png
+move_key.jpeg
+move_key.heic
+this_key.JPG
 
 # ── Design annotations / editorial PDFs ──────────────────────────────────────
 *.pdf

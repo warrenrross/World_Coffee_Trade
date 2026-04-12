@@ -1,5 +1,5 @@
 # Global Coffee Trade Flows
-
+[View Now](https://warrenrross.github.io/World_Coffee_Trade/)
 An interactive world map visualizing bilateral coffee bean trade flows between countries from 1995 to 2024. Step through each year to watch trade relationships evolve — which countries dominate exports, how import patterns shift across continents, and where the biggest individual flows run.
 
 This repo is also intended as a demonstration of **agentic engineering** — building software collaboratively with an AI agent. Context files (`CLAUDE.md`, `memory.md`, `skill.md`) are left in the repo intentionally so that anyone can clone it, point their preferred AI coding agent at it, and have a fully-informed conversation about the project without manual onboarding. The agent already knows the data schema, architecture decisions, and key constraints.
@@ -59,8 +59,12 @@ Aggregate import/export data from the [FAO Trade: Crops and Livestock Products](
 | `index.html` | HTML structure — no embedded data or scripts |
 | `styles.css` | All styles |
 | `app.js` | All D3/TopoJSON visualization logic |
-| `data_v2.json` | Processed trade data — top-40 flows + all >$100M flows per year, 1995–2024 |
-| `data.json` | Earlier version of the trade data (retained for reference) |
+| `data_v3.json` | Processed trade data — top-40 flows + all >$100M flows per year, 1995–2024 |
+| `data_v2.json` | Earlier version of the trade data (retained for reference) |
+| `data.json` | Earliest version of the trade data (retained for reference) |
+| `CLAUDE.md` | Architecture guide for AI coding agents working in this repo |
+| `memory.md` | Full project history and decision log |
+| `jupyter_version_control_spec.md` | Spec for Jupyter notebook version control (nbdime + Jupytext + nbstripout) |
 
 ---
 
@@ -139,7 +143,7 @@ The choropleth uses a **log scale** anchored at ±$1M net trade. Countries withi
 
 ## Dependencies
 
-No build step or package install required. The app loads three local files (`styles.css`, `app.js`, `data_v2.json`) and fetches two libraries from public CDNs:
+No build step or package install required. The app loads three local files (`styles.css`, `app.js`, `data_v3.json`) and fetches two libraries from public CDNs:
 
 - [D3.js v7](https://d3js.org/) — data visualization
 - [TopoJSON](https://github.com/topojson/topojson) — geographic geometry

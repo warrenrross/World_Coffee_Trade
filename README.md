@@ -4,6 +4,18 @@ An interactive world map visualizing bilateral coffee bean trade flows between c
 
 This repo is also intended as a demonstration of **agentic engineering** — building software collaboratively with an AI agent. Context files (`CLAUDE.md`, `memory.md`, `skill.md`) are left in the repo intentionally so that anyone can clone it, point their preferred AI coding agent at it, and have a fully-informed conversation about the project without manual onboarding. The agent already knows the data schema, architecture decisions, and key constraints.
 
+### Tools used
+
+| Tool | Role |
+|---|---|
+| [Claude Code](https://claude.ai/code) (`claude-sonnet-4-6`) | Primary coding agent — file edits, git commits, shell commands, architecture decisions |
+| Python 3.13 | Data pipeline and local HTTP server |
+| Jupyter Lab / Notebook | Exploratory data analysis |
+| D3.js v7 | Visualization, SVG rendering, color scales, transitions |
+| TopoJSON client v3 | Geographic geometry decoding |
+| Natural Earth 110m (`world-atlas@2`) | World country geometry via jsDelivr CDN |
+| GitHub Pages | Static hosting |
+
 ---
 
 ## What It Shows
@@ -84,11 +96,25 @@ Install the [Live Server extension](https://marketplace.visualstudio.com/items?i
 | **◀** | Previous year |
 | **▶** | Next year |
 | **⏵ Play / ⏸ Pause** | Auto-advance through all years |
-| **1× / 1.5× / 3×** | Playback speed |
+| **1× / 1.5× / 3×** | Playback speed (desktop only) |
 | **Slider** | Drag to jump to any year |
 | `←` / `→` arrow keys | Step back / forward one year |
 | `Space` | Play / Pause |
 | `Escape` | Stop playback |
+
+### Header Controls
+
+| Control | Action |
+|---|---|
+| **⛶ Fullscreen** | Enter/exit fullscreen (Android Chrome + desktop; hidden on iOS) |
+
+### Mobile usage
+
+- **Pan**: drag the map
+- **Zoom**: pinch to zoom in/out (map only — overlays stay fixed)
+- **Hover detail**: tap a country to show its tooltip; tap the map background to dismiss
+- **Panel**: tap `[≡]` in the "Top trade flows" header to collapse/expand the flow list
+- **Fullscreen on iPhone**: use Safari's *Share → Add to Home Screen* — launches in standalone mode with no browser chrome
 
 ### Flow Filter (bottom right)
 

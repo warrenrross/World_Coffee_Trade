@@ -494,6 +494,15 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
   panel.classList.toggle('panel-collapsed');
 });
 
+// ── Mobile legend relocation ───────────────────────────────────────────────
+// On narrow screens move #legend from #map-wrap into the controls footer,
+// just before #divv-flow. CSS hides it in the map and styles it inline.
+if (window.matchMedia('(max-width: 640px)').matches) {
+  const legend   = document.getElementById('legend');
+  const divvFlow = document.getElementById('divv-flow');
+  document.getElementById('controls').insertBefore(legend, divvFlow);
+}
+
 // ── Fullscreen toggle ──────────────────────────────────────────────────────
 const btnFs = document.getElementById('btn-fullscreen');
 if (!document.fullscreenEnabled) {

@@ -122,6 +122,18 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
   .yr-lbl{font-size:15px}
   /* Tighten controls gap on narrow screens */
   #controls{gap:8px;padding:0 12px}
+  /* Hide speed buttons and their divider — replaced by inline legend */
+  #speed-seg,#divv-speed{display:none}
+  /* Hide the floating legend — it moves into the controls bar via JS */
+  #map-wrap #legend{display:none}
+  /* Legend when moved inline into controls footer */
+  #controls #legend{
+    position:static;background:transparent;border:none;border-radius:0;
+    backdrop-filter:none;box-shadow:none;padding:0;gap:2px;flex-shrink:0
+  }
+  #controls .leg-title{display:none}
+  #controls .leg-grad{width:72px}
+  #controls .leg-labels{width:72px;font-size:8px}
 }
 
 /* Loading */

@@ -84,12 +84,6 @@
       <span>Neutral</span>
       <span id="leg-net-max">Exporter</span>
     </div>
-    <div class="leg-divider"></div>
-    <div class="leg-arc-row">
-      <div class="leg-line"></div>
-      <div class="leg-arrow">▶</div>
-      <span>Trade flow arc (width = value)</span>
-    </div>
   </div>
 </div>
 
@@ -108,7 +102,7 @@
   <input type="range" id="year-slider" min="0" step="1"/>
   <span class="yr-lbl" id="yr-lbl">2023</span>
 
-  <div class="divv"></div>
+  <div class="divv" id="divv-speed"></div>
 
   <div class="seg" id="speed-seg">
     <button class="seg-btn on-amber" data-spd="1200">1×</button>
@@ -116,7 +110,7 @@
     <button class="seg-btn" data-spd="400">3×</button>
   </div>
 
-  <div class="divv"></div>
+  <div class="divv" id="divv-flow"></div>
 
   <div class="seg" id="flow-seg">
     <button class="seg-btn on-amber" id="flow-all">All flows</button>

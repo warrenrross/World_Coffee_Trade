@@ -1,6 +1,7 @@
 # ── Private / sensitive ──────────────────────────────────────────────────────
 # local-only notes: credentials, deploy details, internal URLs
 private.md
+secure.md
 
 # ── QA / local screenshots ───────────────────────────────────────────────────
 # Playwright visual-QA screenshots; generated locally, not for version control

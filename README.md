@@ -44,31 +44,31 @@ Aggregate import/export data from the [FAO Trade: Crops and Livestock Products](
 
 | File | Description |
 |---|---|
-| `index.html` | The map — fully self-contained, no build step required |
-| `coffee_bilateral_trade_BACI.csv` | Raw bilateral trade data (136,768 rows) |
-| `coffee_green_trade_FAOSTAT.csv` | FAOSTAT country totals 1961–2024 |
-| `coffee_bilateral_trade_data_dictionary.md` | Column definitions + top flows 2023 |
-| `coffee_trade_data_dictionary.md` | FAOSTAT column definitions |
-| `coffee_bilateral_trade_eda.ipynb` | EDA notebook for BACI data (Python) |
-| `coffee_trade_eda.ipynb` | EDA notebook for FAOSTAT data (Python) |
+| `index.html` | HTML structure — no embedded data or scripts |
+| `styles.css` | All styles |
+| `app.js` | All D3/TopoJSON visualization logic |
+| `data_v2.json` | Processed trade data — top-40 flows + all >$100M flows per year, 1995–2024 |
+| `data.json` | Earlier version of the trade data (retained for reference) |
 
 ---
 
 ## Opening Locally
 
-The map is a single `index.html` file but fetches a world geometry file from a CDN on load, so it needs to be served over HTTP rather than opened directly as a `file://` URL.
+The map loads CSS, JS, and trade data as separate files, so it must be served over HTTP — opening `index.html` directly as a `file://` URL will not work.
 
 **Option 1 — Python (no install required)**
 ```bash
-cd coffee-trade-map
+cd "Global Coffee Trade Flows"
 python3 -m http.server 8000
 ```
-Then open [http://localhost:8000](http://localhost:8000) in your browser.
+Then open [http://localhost:8000](http://localhost:8000) in your browser. Stop with `Ctrl+C`.
 
-**Option 2 — Node `serve`**
+**Option 2 — Node (no install required)**
 ```bash
+cd "Global Coffee Trade Flows"
 npx serve .
 ```
+`npx` downloads `serve` on first run if needed. It prints the local URL when ready. Stop with `Ctrl+C`.
 
 **Option 3 — VS Code**
 Install the [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer), right-click `index.html`, and choose *Open with Live Server*.
@@ -113,10 +113,8 @@ The choropleth uses a **log scale** anchored at ±$1M net trade. Countries withi
 
 ## Dependencies
 
-The map is entirely self-contained in `index.html` with no local dependencies. On load it fetches two small files from public CDNs:
+No build step or package install required. The app loads three local files (`styles.css`, `app.js`, `data_v2.json`) and fetches two libraries from public CDNs:
 
 - [D3.js v7](https://d3js.org/) — data visualization
 - [TopoJSON](https://github.com/topojson/topojson) — geographic geometry
 - [Natural Earth 110m countries](https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json) — world geometry
-
-All trade data is embedded directly in the HTML file.

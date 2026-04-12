@@ -41,7 +41,7 @@ const netColorScale = (net, maxAbs) => {
 // Fetch world geometry and trade data in parallel, then initialize.
 Promise.all([
   fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r => r.json()),
-  fetch('data_v2.json').then(r => r.json())
+  fetch('data_v3.json').then(r => r.json())
 ])
   .then(([topo, tradeData]) => {
     TRADE = tradeData;

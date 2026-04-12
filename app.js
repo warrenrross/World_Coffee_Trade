@@ -571,6 +571,7 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
     };
     let nearest = 'bl', best = Infinity;
     for (const [pos, [ax, ay]] of Object.entries(anchors)) {
+      if (pos === originPos) continue; // never snap back to where you started
       const d = Math.hypot(cx - ax, cy - ay);
       if (d < best) { best = d; nearest = pos; }
     }

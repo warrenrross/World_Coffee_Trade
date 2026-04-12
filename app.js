@@ -569,10 +569,13 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
       tl: [p + lw/2,      p  + lh/2    ],
       br: [mw - p - lw/2, mh - p - lh/2],
     };
+    // On wide screens bias br: multiply its distance by 0.75 so it wins sooner
+    const brWeight = mw > mh ? 0.75 : 1;
+    const weights  = { bl: 1, tl: 1, br: brWeight };
     let nearest = 'bl', best = Infinity;
     for (const [pos, [ax, ay]] of Object.entries(anchors)) {
       if (pos === originPos) continue; // never snap back to where you started
-      const d = Math.hypot(cx - ax, cy - ay);
+      const d = Math.hypot(cx - ax, cy - ay) * weights[pos];
       if (d < best) { best = d; nearest = pos; }
     }
     applyPos(nearest);

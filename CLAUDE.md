@@ -137,3 +137,23 @@ if (window.matchMedia('(hover: none)').matches) {
 - **`bigFlows` threshold** — currently $100M; flows below this never appear as supplemental hover arcs
 - **Top-40 limit** — only 40 arcs drawn by default; a DOM performance choice, not a data limit
 - **GitHub Pages** — static hosting only; no server-side processing, no `.htaccess` rewrites needed for this single-page app
+
+---
+
+## Session Log
+
+### Session 1 — Initial build
+See `memory.md` for full history. All D3 visualization, interactivity, mobile layout, and color scale work was completed in this session.
+
+### Session 2 — Repo reorganization
+
+**Completed:**
+- Renamed local directory from `Global Coffee Trade Flows/` (spaces) to `Global_Coffee_Trade_Flows/` (underscores) and moved it from `Perplexity/Coffee_bean_trade_BACI/` up to `_FINAL_PROJECT/` root — same level as the new EDA repo
+- Spun off all EDA work into a dedicated repo: [warrenrross/World_Coffee_Trade_EDA](https://github.com/warrenrross/World_Coffee_Trade_EDA)
+- Moved `jupyter_version_control_spec.md` to the EDA repo (where it belongs alongside the notebooks)
+- Updated `README.md` and `memory.md` to link to the EDA repo for data, notebooks, and live reports
+- Fixed `cd "Global Coffee Trade Flows"` → `cd Global_Coffee_Trade_Flows` in README local-server instructions
+
+**Architectural decisions:**
+- EDA notebooks, data, figures, and Jupytext workflow all live in `warrenrross/World_Coffee_Trade_EDA` — not here. This repo is the visualization product only.
+- GitHub Pages for EDA reports: `warrenrross.github.io/World_Coffee_Trade_EDA/reports/`

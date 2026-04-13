@@ -12,7 +12,7 @@ This project was built collaboratively with **Claude Code** (Anthropic, `claude-
 ### Authoring environment
 - **Claude Code CLI** — primary coding agent (file edits, git, shell)
 - **Python 3.13** — data pipeline scripts and local HTTP server (`python3 -m http.server 8000`)
-- **Jupyter Lab / Notebook** — EDA notebooks (`coffee_trade_eda.ipynb`, `coffee_bilateral_trade_eda.ipynb`)
+- **Jupyter Lab / Notebook** — EDA notebooks (`coffee_trade_eda.ipynb`, `coffee_bilateral_trade_eda.ipynb`) now in [warrenrross/World_Coffee_Trade_EDA](https://github.com/warrenrross/World_Coffee_Trade_EDA)
 - **D3.js v7** — visualization and SVG rendering
 - **TopoJSON client v3** — geographic geometry decoding
 - **Natural Earth 110m** — world geometry via `world-atlas@2` on jsDelivr CDN
@@ -46,9 +46,10 @@ This project was built collaboratively with **Claude Code** (Anthropic, `claude-
 
 ## Phase 2 — EDA Notebooks
 
-Two Jupyter notebooks built for exploration:
+Two Jupyter notebooks built for exploration. Both now live in [warrenrross/World_Coffee_Trade_EDA](https://github.com/warrenrross/World_Coffee_Trade_EDA) with full Jupytext + nbstripout version control.
+
 - `coffee_trade_eda.ipynb` — FAOSTAT data. Uses `ydata-profiling` (HTML report), `sweetviz` (HTML comparison), and matplotlib charts.
-- `coffee_bilateral_trade_eda.ipynb` — BACI data. Includes bilateral heatmaps, three `geopandas` choropleth maps (exports, imports, net position), and a Herfindahl–Hirschman Index (HHI) concentration metric.
+- `coffee_bilateral_trade_eda.ipynb` — BACI data. Includes bilateral heatmaps, three `geopandas` choropleth maps (exports, imports, net position), and a Herfindahl–Hirschman Index (HHI) concentration metric. Live reports: [profile](https://warrenrross.github.io/World_Coffee_Trade_EDA/reports/coffee_bilateral_profile_report.html) · [sweetviz](https://warrenrross.github.io/World_Coffee_Trade_EDA/reports/coffee_bilateral_sweetviz_report.html)
 
 **Dependency note**: All pip installs use the `#!pip3 install` syntax so cells can be uncommented and run directly in Jupyter without modifying the notebook structure.
 

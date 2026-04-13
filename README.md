@@ -11,7 +11,7 @@ This repo is also intended as a demonstration of **agentic engineering** — bui
 |---|---|
 | [Claude Code](https://claude.ai/code) (`claude-sonnet-4-6`) | Primary coding agent — file edits, git commits, shell commands, architecture decisions |
 | Python 3.13 | Data pipeline and local HTTP server |
-| Jupyter Lab / Notebook | Exploratory data analysis |
+| Jupyter Lab / Notebook | Exploratory data analysis — [warrenrross/World_Coffee_Trade_EDA](https://github.com/warrenrross/World_Coffee_Trade_EDA) |
 | D3.js v7 | Visualization, SVG rendering, color scales, transitions |
 | TopoJSON client v3 | Geographic geometry decoding |
 | Natural Earth 110m (`world-atlas@2`) | World country geometry via jsDelivr CDN |
@@ -40,7 +40,7 @@ All flow data comes from the [CEPII BACI database](https://www.cepii.fr/CEPII/en
 - **Coverage**: 1995–2024, 229 exporters, 233 importers
 - **HS codes**: 090111 (coffee, not roasted, not decaffeinated) + 090112 (coffee, not roasted, decaffeinated)
 - **Units**: Value in thousands USD; quantity in metric tonnes
-- **File**: `coffee_bilateral_trade_BACI.csv` (136,768 rows)
+- **File**: `coffee_bilateral_trade_BACI.csv` (136,768 rows) — full dataset in [warrenrross/World_Coffee_Trade_EDA](https://github.com/warrenrross/World_Coffee_Trade_EDA)
 
 ### FAOSTAT — Country-Level Totals (supplementary)
 Aggregate import/export data from the [FAO Trade: Crops and Livestock Products](https://www.fao.org/faostat/en/#data/TCL) dataset.
@@ -48,8 +48,7 @@ Aggregate import/export data from the [FAO Trade: Crops and Livestock Products](
 - **Coverage**: 1961–2024, 279 countries/territories
 - **Item**: Coffee, green (item code 656)
 - **Units**: Tonnes and thousands USD
-- **File**: `coffee_green_trade_FAOSTAT.csv` (53,892 rows)
-- **Note**: FAOSTAT does not identify bilateral partners — it only gives country-level totals. It is not used in the map but provides the longer historical record back to 1961.
+- **Note**: FAOSTAT does not identify bilateral partners — it only gives country-level totals. It is not used in the map but provides the longer historical record back to 1961. Exploratory analysis: [warrenrross/World_Coffee_Trade_EDA](https://github.com/warrenrross/World_Coffee_Trade_EDA)
 
 ---
 
@@ -63,7 +62,6 @@ Aggregate import/export data from the [FAO Trade: Crops and Livestock Products](
 | `data_v3.json` | Processed trade data — top-40 flows + all >$100M flows per year, 1995–2024 |
 | `CLAUDE.md` | Architecture guide for AI coding agents working in this repo |
 | `memory.md` | Full project history and decision log |
-| `jupyter_version_control_spec.md` | Spec for Jupyter notebook version control (nbdime + Jupytext + nbstripout) |
 
 ---
 
@@ -73,14 +71,14 @@ The map loads CSS, JS, and trade data as separate files, so it must be served ov
 
 **Option 1 — Python (no install required)**
 ```bash
-cd "Global Coffee Trade Flows"
+cd Global_Coffee_Trade_Flows
 python3 -m http.server 8000
 ```
 Then open [http://localhost:8000](http://localhost:8000) in your browser. Stop with `Ctrl+C`.
 
 **Option 2 — Node (no install required)**
 ```bash
-cd "Global Coffee Trade Flows"
+cd Global_Coffee_Trade_Flows
 npx serve .
 ```
 `npx` downloads `serve` on first run if needed. It prints the local URL when ready. Stop with `Ctrl+C`.

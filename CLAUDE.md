@@ -23,11 +23,10 @@ python3 -m http.server 8000
 | `styles.css` | All styles including responsive mobile rules |
 | `app.js` | All D3/TopoJSON visualization logic |
 | `data_v3.json` | Current trade data — top-40 flows + all >$100M flows per year, 1995–2024 |
-| `data_v2.json` | Older format — lacks `bigFlows`; retained for reference only, not loaded |
-| `data.json` | Earliest version; retained for reference only |
 | `memory.md` | Human-readable project history and decision log |
+| `.claude/commands/wrap-up.md` | Custom `/wrap-up` slash command for session close-out |
 
-The project was initially built as a monolithic `index.html` (CSS + JS + data all inline). It was later split into separate files to support GitHub Pages multi-file hosting. Trade data is now loaded via `fetch('data_v3.json')` rather than embedded inline.
+The project was initially built as a monolithic `index.html` (CSS + JS + data all inline). It was later split into separate files to support GitHub Pages multi-file hosting. Trade data is now loaded via `fetch('data_v3.json')` rather than embedded inline. `data.json` and `data_v2.json` were deleted — both are strict subsets of v3; full history is in git.
 
 ## Architecture
 
@@ -109,11 +108,24 @@ if (window.matchMedia('(hover: none)').matches) {
 - `height:100dvh` on `#app` — dynamic viewport height adjusts as mobile browser chrome shows/hides
 - `touch-action:none` on SVG — prevents browser intercepting pinch-zoom gestures before d3.zoom sees them
 - Speed segment buttons hidden (`#speed-seg`, `#divv-speed`)
-- `#legend` DOM element is physically relocated from `#map-wrap` into `#controls` via JS `insertBefore` on load — CSS then hides the map version and styles the inline one compactly
+- Legend stays inside `#map-wrap` on all screen sizes — repositionable by drag (see Legend drag below)
 
 ### Year playback
 
 `setInterval`/`clearInterval` with three speed modes (1200ms / 700ms / 400ms per year). `render()` is called on year change: updates choropleth fills, removes old arc elements, appends new arcs with entrance animation.
+
+### Legend drag-to-corner
+
+`#legend` is draggable to three positions: bottom-left (default), top-left, bottom-right. CSS classes `leg-tl` / `leg-br` define the non-default positions; bottom-left has no extra class.
+
+- `cursor:grab` at rest → `cursor:grabbing` + shadow lift (`.leg-dragging`) while held
+- `setPointerCapture` keeps tracking outside the element during fast drags
+- Under 10px travel → snaps back to origin (accidental touch)
+- Over 10px → **dot product** of drag vector against direction-to-each-corner determines winner; origin corner excluded from candidates
+- Position saved to `localStorage` key `coffee-legend-pos`; restored instantly on load (before any transition fires)
+- `pointercancel` always snaps back to origin
+
+**Do not revert to nearest-release-position logic.** The dot product approach is scale-invariant — direction of drag determines the target regardless of screen size. The prior nearest-corner approach required per-orientation weight scalars to compensate for proportional distance differences.
 
 ### Fullscreen
 

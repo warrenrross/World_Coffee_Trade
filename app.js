@@ -155,6 +155,13 @@ function initMap(topo) {
       .on('mouseleave', onCountryLeave);
   }
 
+  // Show hint with device-appropriate text; dismiss on first country interaction
+  const hint = document.getElementById('hint');
+  hint.textContent = window.matchMedia('(hover: none)').matches
+    ? 'Touch a Country to highlight Trade Flows'
+    : 'Select a Country to highlight Trade Flows';
+  hint.classList.add('vis');
+
   // Resize handler — reset zoom so the new viewBox matches the reset state
   window.addEventListener('resize', () => {
     W = wrap.clientWidth; H = wrap.clientHeight;
@@ -291,7 +298,15 @@ function drawFlows(flows) {
 // bigFlows: all flows >$100M for this country, drawn as supplemental arcs
 // Regular top-40 arcs are updated in-place (no redraw).
 // Supplemental arcs (.flow-arc-hover) are appended and removed on leave.
+function dismissHint() {
+  const hint = document.getElementById('hint');
+  if (!hint.classList.contains('vis')) return;
+  hint.classList.add('fade');
+  hint.addEventListener('transitionend', () => hint.classList.remove('vis', 'fade'), { once: true });
+}
+
 function onCountryHover(event, d) {
+  dismissHint();
   const iso = isoFromNum[+d.id];
   const year = years[yi];
   const yd = TRADE[year];

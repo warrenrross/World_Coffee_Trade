@@ -157,3 +157,18 @@ See `memory.md` for full history. All D3 visualization, interactivity, mobile la
 **Architectural decisions:**
 - EDA notebooks, data, figures, and Jupytext workflow all live in `warrenrross/World_Coffee_Trade_EDA` — not here. This repo is the visualization product only.
 - GitHub Pages for EDA reports: `warrenrross.github.io/World_Coffee_Trade_EDA/reports/`
+
+### Session 3 — Instructional hint overlay
+
+**Completed:**
+- Added `#hint` div inside `#map-wrap` — a pill-shaped overlay positioned top-center of the map
+- Text is device-appropriate: "Select a Country to highlight Trade Flows" on desktop (hover devices), "Touch a Country to highlight Trade Flows" on touch devices
+- Text is set via JS using the existing `window.matchMedia('(hover: none)')` pattern; HTML contains an empty `<div id="hint"></div>`
+- Hint fades out (0.4s opacity transition) on the first country interaction via `dismissHint()`, called at the top of `onCountryHover`
+- Color `#c5d2e0`, `font-size: 12px`, `font-weight: 400` (inherited), `font-family: Inter` (inherited)
+
+**Design decisions:**
+- Hint is visible on both desktop and touch — not gated to touch-only
+- Text varies by device rather than using a single generic phrase
+- `pointer-events: none` so the hint never blocks map interaction
+- `dismissHint()` is defined just above `onCountryHover` in `app.js` (not a module-level var) — no state beyond the CSS classes

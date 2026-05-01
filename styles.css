@@ -67,6 +67,26 @@ header{display:flex;align-items:center;gap:12px;padding:0 18px;
 #tip .tip-net-pos{color:var(--green)}
 #tip .tip-net-neg{color:var(--blue)}
 
+/* Pinned tip — interactive */
+#tip.tip-pinned{pointer-events:auto}
+
+/* Header row: country name (left) + hamburger (right) */
+.tip-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}
+.tip-head .tip-name{margin-bottom:0;flex:1}
+
+/* Hamburger button — extends ctrl-btn, smaller size */
+.tip-menu-btn{width:24px;height:24px;color:var(--muted)}
+.tip-menu-btn.active{color:var(--amber);border-color:var(--amber)}
+
+/* Flows list — collapsed by default, expands on open */
+.tip-flows{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--border);
+  max-height:0;overflow:hidden;transition:max-height .25s ease}
+.tip-flows.open{max-height:220px;overflow-y:auto}
+
+/* Flow rows — reuse existing bar/value classes from panel */
+.tip-flow-item{display:flex;flex-direction:column;padding:5px 0;cursor:pointer}
+.tip-flow-item:hover{background:rgba(212,161,68,.08)}
+
 /* Legend */
 #legend{position:absolute;bottom:14px;left:14px;
   background:rgba(22,27,34,.9);border:1px solid var(--border);

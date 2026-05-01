@@ -9,6 +9,7 @@ let yi = 0, playing = false, playTimer = null, playSpeed = 1200;
 // Selection
 let highlighted    = null; // { ei, ii } or null — specific flow arc
 let pinnedCountry  = null; // datum d of clicked country, or null
+let tipFlowsOpen   = false; // whether the country-tip flow list is expanded
 
 // Display filter
 let topNFilter = 40;       // 40 = all, 10 = top10
@@ -283,6 +284,7 @@ function render() {
   }
 
   updatePanel(yd.flows.slice(0, CONFIG.PANEL_FLOWS));
+  if (pinnedCountry) onCountryHover(null, pinnedCountry);
 }
 
 // ── Legend gradient ────────────────────────────────────────────────────────
@@ -405,6 +407,9 @@ function dismissHint() {
 function onCountryHover(event, d) {
   if (pinnedCountry && pinnedCountry !== d) return;
   dismissHint();
+
+  const isPinned = pinnedCountry === d;
+
   const iso = isoFromNum[+d.id];
   const year = years[yi];
   const yd = TRADE[year];
@@ -415,23 +420,86 @@ function onCountryHover(event, d) {
 
   const c = yd.countries[iso];
   const name = (c && c.n) || nameFromISO[iso] || iso;
-  if (c) {
-    const netCls  = c.net >= 0 ? 'tip-net-pos' : 'tip-net-neg';
-    const netSign = c.net >= 0 ? '+' : '';
+
+  if (!c) {
+    tip.classList.remove('tip-pinned');
+    tip.innerHTML = `<div class="tip-name">${name}</div><div style="color:var(--muted);font-size:11px">No data for ${year}</div>`;
+    tip.style.display = 'block';
+    return;
+  }
+
+  const netCls  = c.net >= 0 ? 'tip-net-pos' : 'tip-net-neg';
+  const netSign = c.net >= 0 ? '+' : '';
+
+  if (isPinned) {
+    const flows = topNFilter === 40 ? yd.flows : yd.flows.slice(0, topNFilter);
+    const connected = flows.filter(f => f.ei === iso || f.ii === iso);
+    const connectedSet = new Set(connected.map(f => f.ei + '|' + f.ii));
+    const extra = (yd.bigFlows || []).filter(f =>
+      (f.ei === iso || f.ii === iso) && !connectedSet.has(f.ei + '|' + f.ii)
+    );
+    const allFlows = [...connected, ...extra];
+    const maxV = allFlows.length ? d3.max(allFlows, f => f.v) : 1;
+
+    const hamburgerSVG = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="1" y="2"  width="12" height="1.5" rx=".75" fill="currentColor"/>
+      <rect x="1" y="6"  width="12" height="1.5" rx=".75" fill="currentColor"/>
+      <rect x="1" y="10" width="12" height="1.5" rx=".75" fill="currentColor"/>
+    </svg>`;
+
+    const flowRows = allFlows.map(f => `
+      <li class="tip-flow-item" data-ei="${f.ei}" data-ii="${f.ii}">
+        <div class="flow-route">${f.en} → ${f['in']}</div>
+        <div class="flow-bar-row">
+          <div class="bar-bg"><div class="bar-fill" style="width:${(f.v / maxV * 100).toFixed(1)}%"></div></div>
+          <span class="flow-val">$${fmtMShort(f.v)}</span>
+        </div>
+      </li>
+    `).join('');
+
+    tip.innerHTML = `
+      <div class="tip-head">
+        <div class="tip-name">${name}</div>
+        <button class="ctrl-btn tip-menu-btn${tipFlowsOpen ? ' active' : ''}" title="Toggle flow list" aria-label="Toggle flow list">${hamburgerSVG}</button>
+      </div>
+      <div class="tip-row"><span class="tip-label">Exports</span><span class="tip-val" style="color:#d4a144">$${fmtM(c.e)}M</span></div>
+      <div class="tip-row"><span class="tip-label">Imports</span><span class="tip-val" style="color:#58a6ff">$${fmtM(c.i)}M</span></div>
+      <div class="tip-row"><span class="tip-label">Net</span><span class="tip-val ${netCls}">${netSign}$${fmtM(Math.abs(c.net))}M ${c.net>=0?'exporter':'importer'}</span></div>
+      <ul class="tip-flows${tipFlowsOpen ? ' open' : ''}">${flowRows}</ul>
+    `;
+
+    tip.querySelector('.tip-menu-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      tipFlowsOpen = !tipFlowsOpen;
+      tip.querySelector('.tip-menu-btn').classList.toggle('active', tipFlowsOpen);
+      tip.querySelector('.tip-flows').classList.toggle('open', tipFlowsOpen);
+    });
+
+    tip.querySelectorAll('.tip-flow-item').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        highlighted = { ei: el.dataset.ei, ii: el.dataset.ii };
+        pinnedCountry = null;
+        render();
+      });
+    });
+
+    tip.classList.add('tip-pinned');
+  } else {
+    tip.classList.remove('tip-pinned');
     tip.innerHTML = `
       <div class="tip-name">${name}</div>
       <div class="tip-row"><span class="tip-label">Exports</span><span class="tip-val" style="color:#d4a144">$${fmtM(c.e)}M</span></div>
       <div class="tip-row"><span class="tip-label">Imports</span><span class="tip-val" style="color:#58a6ff">$${fmtM(c.i)}M</span></div>
       <div class="tip-row"><span class="tip-label">Net</span><span class="tip-val ${netCls}">${netSign}$${fmtM(Math.abs(c.net))}M ${c.net>=0?'exporter':'importer'}</span></div>
     `;
-  } else {
-    tip.innerHTML = `<div class="tip-name">${name}</div><div style="color:var(--muted);font-size:11px">No data for ${year}</div>`;
   }
   tip.style.display = 'block';
 }
 
 function onCountryLeave() {
   if (pinnedCountry) return;
+  tipFlowsOpen = false;
   gCountries.selectAll('.country').classed('dimmed', false);
   hideTip();
 }
@@ -449,7 +517,7 @@ function showFlowTip(event, d) {
   tip.style.display = 'block';
 }
 
-function hideTip() { tip.style.display = 'none'; }
+function hideTip() { tip.classList.remove('tip-pinned'); tip.style.display = 'none'; }
 
 // ── Panel ──────────────────────────────────────────────────────────────────
 function updatePanel(flows) {

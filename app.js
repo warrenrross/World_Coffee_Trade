@@ -2,6 +2,7 @@
 let TRADE;
 let years = [], yi = 0, playing = false, playTimer = null, playSpeed = 1200;
 let highlighted = null;   // { ei, ii } or null
+let pinnedCountry = null; // datum d of pinned country, or null
 let topNFilter = 40;      // 40 = all, 10 = top10
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -152,7 +153,15 @@ function initMap(topo) {
   } else {
     countries
       .on('mousemove', onCountryHover)
-      .on('mouseleave', onCountryLeave);
+      .on('mouseleave', onCountryLeave)
+      .on('click', (event, d) => {
+        event.stopPropagation();
+        pinnedCountry = (pinnedCountry === d) ? null : d;
+        render();
+      });
+    svg.on('click', () => {
+      if (pinnedCountry) { pinnedCountry = null; render(); }
+    });
   }
 
   // Show hint with device-appropriate text; dismiss on first country interaction
@@ -195,6 +204,7 @@ function render() {
 
   // Choropleth — net exporter green, net importer blue
   // Only update fill colors; never touch .dimmed here (that's hover-only)
+  const pinnedISO = pinnedCountry ? isoFromNum[+pinnedCountry.id] : null;
   gCountries.selectAll('.country')
     .attr('fill', d => {
       const iso = isoFromNum[+d.id];
@@ -202,14 +212,27 @@ function render() {
       if (!c) return '#2d333b';  // no data: dark grey
       return netColorScale(c.net, maxAbs);
     })
-    .classed('dimmed', false);  // always clear dimming on a real render
+    .classed('dimmed', dd => pinnedISO ? isoFromNum[+dd.id] !== pinnedISO : false);
 
   // Legend gradient
   drawLegendGradient(maxAbs);
 
-  // Flows
+  // Flows — normal mode draws all arcs; highlighted mode draws only selected arcs
   const flows = topNFilter === 40 ? yd.flows : yd.flows.slice(0, topNFilter);
-  drawFlows(flows);
+  if (pinnedCountry) {
+    const iso = pinnedISO;
+    const connected = flows.filter(f => f.ei === iso || f.ii === iso);
+    const connectedSet = new Set(connected.map(f => f.ei + '|' + f.ii));
+    const extra = (yd.bigFlows || []).filter(f =>
+      (f.ei === iso || f.ii === iso) && !connectedSet.has(f.ei + '|' + f.ii)
+    );
+    drawFlowsHighlighted([...connected, ...extra]);
+  } else if (highlighted) {
+    const arc = flows.find(f => f.ei === highlighted.ei && f.ii === highlighted.ii);
+    drawFlowsHighlighted(arc ? [arc] : []);
+  } else {
+    drawFlowsNormal(flows);
+  }
 
   // Panel
   updatePanel(yd.flows.slice(0, 30));
@@ -233,71 +256,98 @@ function drawLegendGradient(maxAbs) {
 }
 
 // ── Flow arcs ──────────────────────────────────────────────────────────────
-function drawFlows(flows) {
-  gFlows.selectAll('*').remove();
 
-  const maxV = d3.max(flows, d => d.v) || 1;
-  const wScale   = d3.scaleSqrt().domain([0, maxV]).range([0.5, 5]).clamp(true);
-  const opScale  = d3.scaleLinear().domain([0, maxV]).range([0.12, 0.72]).clamp(true);
+// Shared Bézier geometry for all arc draw functions
+function arcGeom(src, tgt) {
+  const dx = tgt[0] - src[0], dy = tgt[1] - src[1];
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const bend = dist * 0.22;
+  const mx = (src[0]+tgt[0])/2 - dy * bend / (dist||1);
+  const my = (src[1]+tgt[1])/2 + dx * bend / (dist||1);
+  const t = 0.88;
+  const ex = (1-t)*(1-t)*src[0] + 2*(1-t)*t*mx + t*t*tgt[0];
+  const ey = (1-t)*(1-t)*src[1] + 2*(1-t)*t*my + t*t*tgt[1];
+  return `M ${src[0]},${src[1]} Q ${mx},${my} ${ex},${ey}`;
+}
+
+// Normal mode: all arcs at natural opacity, gold color, size-based markers
+function drawFlowsNormal(flows) {
+  gFlows.selectAll('*').remove();
+  const maxV  = d3.max(flows, d => d.v) || 1;
+  const wScale = d3.scaleSqrt().domain([0, maxV]).range([0.5, 5]).clamp(true);
+  const opScale = d3.scaleLinear().domain([0, maxV]).range([0.12, 0.72]).clamp(true);
 
   flows.forEach((d, i) => {
     const src = centroidMap[d.ei];
     const tgt = centroidMap[d.ii];
     if (!src || !tgt) return;
-
-    const isHi = highlighted && d.ei === highlighted.ei && d.ii === highlighted.ii;
-    const sw   = wScale(d.v);
-    const op   = highlighted ? (isHi ? 0.92 : 0.06) : opScale(d.v);
-
-    // Bend arc away from straight line
-    const dx = tgt[0] - src[0], dy = tgt[1] - src[1];
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const bend = dist * 0.22;
-    const mx = (src[0]+tgt[0])/2 - dy * bend / (dist||1);
-    const my = (src[1]+tgt[1])/2 + dx * bend / (dist||1);
-
-    // Shorten endpoint slightly so arrow doesn't overdraw the country
-    const t = 0.88;
-    const ex = (1-t)*(1-t)*src[0] + 2*(1-t)*t*mx + t*t*tgt[0];
-    const ey = (1-t)*(1-t)*src[1] + 2*(1-t)*t*my + t*t*tgt[1];
-    const arcD = `M ${src[0]},${src[1]} Q ${mx},${my} ${ex},${ey}`;
-
-    // Choose marker size
+    const sw = wScale(d.v);
     const marker = sw > 3.5 ? 'arr-lg' : sw > 1.8 ? 'arr-md' : 'arr-sm';
 
     const path = gFlows.append('path')
-      .attr('class','flow-arc')
-      .attr('d', arcD)
-      .attr('stroke', isHi ? '#ffffff' : '#d4a144')
+      .attr('class', 'flow-arc')
+      .attr('d', arcGeom(src, tgt))
+      .attr('stroke', '#d4a144')
       .attr('stroke-width', sw)
       .attr('stroke-opacity', 0)
-      .attr('marker-end', `url(#${isHi ? 'arr-hi' : marker})`)
-      // Store base values so onCountryLeave can restore without a redraw
-      .attr('data-base-op', op)
-      .attr('data-base-marker', `url(#${isHi ? 'arr-hi' : marker})`)
+      .attr('fill', 'none')
+      .attr('marker-end', `url(#${marker})`)
       .datum(d);
 
     path.transition()
       .delay(i * 15).duration(450).ease(d3.easeCubicOut)
-      .attr('stroke-opacity', op);
+      .attr('stroke-opacity', opScale(d.v));
 
-    // Hover
-    path.on('mousemove', (event) => {
-      showFlowTip(event, d);
-    }).on('mouseleave', () => {
-      hideTip();
-    }).on('click', () => {
-      highlighted = (highlighted && highlighted.ei===d.ei && highlighted.ii===d.ii)
-        ? null : { ei: d.ei, ii: d.ii };
-      render();
-    });
+    path.on('mousemove', event => showFlowTip(event, d))
+        .on('mouseleave', () => hideTip())
+        .on('click', () => {
+          highlighted = (highlighted && highlighted.ei===d.ei && highlighted.ii===d.ii)
+            ? null : { ei: d.ei, ii: d.ii };
+          render();
+        });
   });
 }
 
-// ── Country hover — tooltip + arc highlight + bigFlow overlay ────────────────
-// bigFlows: all flows >$100M for this country, drawn as supplemental arcs
-// Regular top-40 arcs are updated in-place (no redraw).
-// Supplemental arcs (.flow-arc-hover) are appended and removed on leave.
+// Highlighted mode: only the specified arcs drawn, white / arr-hi marker
+function drawFlowsHighlighted(arcs) {
+  gFlows.selectAll('*').remove();
+  const maxV  = d3.max(arcs, d => d.v) || 1;
+  const wScale = d3.scaleSqrt().domain([0, maxV]).range([0.5, 5]).clamp(true);
+
+  arcs.forEach((d, i) => {
+    const src = centroidMap[d.ei];
+    const tgt = centroidMap[d.ii];
+    if (!src || !tgt) return;
+
+    const path = gFlows.append('path')
+      .attr('class', 'flow-arc')
+      .attr('d', arcGeom(src, tgt))
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', wScale(d.v))
+      .attr('stroke-opacity', 0)
+      .attr('fill', 'none')
+      .attr('marker-end', 'url(#arr-hi)')
+      .datum(d);
+
+    path.transition()
+      .delay(i * 15).duration(450).ease(d3.easeCubicOut)
+      .attr('stroke-opacity', 0.92);
+
+    path.on('mousemove', event => showFlowTip(event, d))
+        .on('mouseleave', () => {
+          if (pinnedCountry) onCountryHover(null, pinnedCountry);
+          else hideTip();
+        })
+        .on('click', () => {
+          highlighted = (highlighted && highlighted.ei===d.ei && highlighted.ii===d.ii)
+            ? null : { ei: d.ei, ii: d.ii };
+          pinnedCountry = null;
+          render();
+        });
+  });
+}
+
+// ── Country hover — tooltip + country dimming ────────────────────────────────
 function dismissHint() {
   const hint = document.getElementById('hint');
   if (!hint.classList.contains('vis')) return;
@@ -306,73 +356,18 @@ function dismissHint() {
 }
 
 function onCountryHover(event, d) {
+  if (pinnedCountry && pinnedCountry !== d) return;
   dismissHint();
   const iso = isoFromNum[+d.id];
   const year = years[yi];
   const yd = TRADE[year];
   if (!yd || !iso) return;
 
-  // Dim all countries except hovered one
   gCountries.selectAll('.country')
     .classed('dimmed', dd => isoFromNum[+dd.id] !== iso);
 
-  // Set of exporter+importer pairs already drawn in top-40
-  const drawnPairs = new Set();
-  gFlows.selectAll('.flow-arc').each(function(fd) {
-    drawnPairs.add(fd.ei + '|' + fd.ii);
-  });
-
-  // Dim all existing top-40 arcs; highlight ones connected to this country
-  gFlows.selectAll('.flow-arc').each(function(fd) {
-    const connected = fd.ei === iso || fd.ii === iso;
-    const el = d3.select(this);
-    el.attr('stroke', connected ? '#ffffff' : '#d4a144')
-      .attr('stroke-opacity', connected ? 0.92 : 0.05)
-      .attr('marker-end', connected
-        ? 'url(#arr-hi)'
-        : `url(#${+el.attr('stroke-width') > 3.5 ? 'arr-lg' : +el.attr('stroke-width') > 1.8 ? 'arr-md' : 'arr-sm'})`
-      );
-  });
-
-  // Draw supplemental arcs for bigFlows not already in top-40
-  const bigFlows = (yd.bigFlows || []).filter(f =>
-    (f.ei === iso || f.ii === iso) && !drawnPairs.has(f.ei + '|' + f.ii)
-  );
-
-  const maxV = d3.max(yd.flows, f => f.v) || 1;
-  const wScale = d3.scaleSqrt().domain([0, maxV]).range([0.5, 5]).clamp(true);
-
-  bigFlows.forEach(f => {
-    const src = centroidMap[f.ei];
-    const tgt = centroidMap[f.ii];
-    if (!src || !tgt) return;
-    const sw = wScale(f.v);
-    const dx = tgt[0]-src[0], dy = tgt[1]-src[1];
-    const dist = Math.sqrt(dx*dx+dy*dy);
-    const bend = dist * 0.22;
-    const mx = (src[0]+tgt[0])/2 - dy*bend/(dist||1);
-    const my = (src[1]+tgt[1])/2 + dx*bend/(dist||1);
-    const t = 0.88;
-    const ex = (1-t)*(1-t)*src[0] + 2*(1-t)*t*mx + t*t*tgt[0];
-    const ey = (1-t)*(1-t)*src[1] + 2*(1-t)*t*my + t*t*tgt[1];
-    const arcD = `M ${src[0]},${src[1]} Q ${mx},${my} ${ex},${ey}`;
-    gFlows.append('path')
-      .attr('class','flow-arc-hover')
-      .attr('d', arcD)
-      .attr('stroke', '#ffffff')
-      .attr('stroke-width', sw)
-      .attr('stroke-opacity', 0)
-      .attr('fill', 'none')
-      .attr('marker-end', 'url(#arr-hi)')
-      .attr('pointer-events', 'none')
-      .datum(f)
-      .transition().duration(250).ease(d3.easeCubicOut)
-      .attr('stroke-opacity', 0.88);
-  });
-
   const c = yd.countries[iso];
   const name = (c && c.n) || nameFromISO[iso] || iso;
-
   if (c) {
     const netCls = c.net >= 0 ? 'tip-net-pos' : 'tip-net-neg';
     const netSign = c.net >= 0 ? '+' : '';
@@ -385,25 +380,12 @@ function onCountryHover(event, d) {
   } else {
     tip.innerHTML = `<div class="tip-name">${name}</div><div style="color:var(--muted);font-size:11px">No data for ${year}</div>`;
   }
-
   tip.style.display = 'block';
 }
 
 function onCountryLeave() {
-  // Remove dimming
+  if (pinnedCountry) return;
   gCountries.selectAll('.country').classed('dimmed', false);
-
-  // Remove supplemental hover arcs
-  gFlows.selectAll('.flow-arc-hover').remove();
-
-  // Restore top-40 arcs from stored base attributes
-  gFlows.selectAll('.flow-arc').each(function(fd) {
-    const el = d3.select(this);
-    el.attr('stroke', highlighted && fd.ei===highlighted.ei && fd.ii===highlighted.ii ? '#ffffff' : '#d4a144')
-      .attr('stroke-opacity', el.attr('data-base-op'))
-      .attr('marker-end', el.attr('data-base-marker'));
-  });
-
   hideTip();
 }
 
@@ -626,5 +608,5 @@ document.addEventListener('keydown', e => {
   if (e.key==='ArrowLeft')  { stop(); yi=Math.max(0,yi-1); render(); }
   if (e.key==='ArrowRight') { stop(); yi=Math.min(years.length-1,yi+1); render(); }
   if (e.key===' ')          { e.preventDefault(); toggle(); }
-  if (e.key==='Escape')     { highlighted=null; gCountries.selectAll('.country').classed('dimmed',false); hideTip(); render(); }
+  if (e.key==='Escape')     { highlighted=null; pinnedCountry=null; gCountries.selectAll('.country').classed('dimmed',false); hideTip(); render(); }
 });

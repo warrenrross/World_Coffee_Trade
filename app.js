@@ -1,41 +1,100 @@
 // ── State ──────────────────────────────────────────────────────────────────
+// Data (loaded once at boot)
 let TRADE;
-let years = [], yi = 0, playing = false, playTimer = null, playSpeed = 1200;
-let highlighted = null;   // { ei, ii } or null
-let pinnedCountry = null; // datum d of pinned country, or null
-let topNFilter = 40;      // 40 = all, 10 = top10
+let years = [];
 
-// ── DOM refs ───────────────────────────────────────────────────────────────
-const svg      = d3.select('#map-svg');
-const tip      = document.getElementById('tip');
-const mapWrap  = document.getElementById('map-wrap');
+// Playback
+let yi = 0, playing = false, playTimer = null, playSpeed = 1200;
 
-// ── Layers ─────────────────────────────────────────────────────────────────
+// Selection
+let highlighted    = null; // { ei, ii } or null — specific flow arc
+let pinnedCountry  = null; // datum d of clicked country, or null
+
+// Display filter
+let topNFilter = 40;       // 40 = all, 10 = top10
+
+// Map geometry (set by initMap, recomputed on resize)
 let gGraticule, gCountries, gFlows;
 let projection, pathGen;
 let W, H;
-let centroidMap = {};   // ISO3 → [px, py]
-let isoFromNum  = {};   // numericId → ISO3
-let nameFromISO = {};   // ISO3 → display name (from trade data)
+let centroidMap = {};      // ISO3 → [px, py]
+let nameFromISO = {};      // ISO3 → display name (from trade data)
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+const svg     = d3.select('#map-svg');
+const tip     = document.getElementById('tip');
+const mapWrap = document.getElementById('map-wrap');
+
+// ── Config ─────────────────────────────────────────────────────────────────
+const CONFIG = {
+  // Arc geometry (Bézier)
+  ARC_BEND:    0.22,  // control point perpendicular offset ratio
+  ARC_END_T:   0.88,  // t-param for endpoint shortening (avoids arrowhead/country overlap)
+  // Stroke width scale (sqrt, applied to flow value)
+  STROKE_MIN:  0.5,
+  STROKE_MAX:  5,
+  // Marker size thresholds (stroke-width cutoffs for arr-lg / arr-md / arr-sm)
+  MARKER_LG:   3.5,
+  MARKER_MD:   1.8,
+  // Normal-mode opacity scale (linear on flow value)
+  OPACITY_MIN: 0.12,
+  OPACITY_MAX: 0.72,
+  // Highlighted arc opacity
+  OPACITY_HI:  0.92,
+  // Arc entrance animation
+  ARC_DURATION: 450,  // ms
+  ARC_STAGGER:  15,   // ms delay between successive arcs
+  // Map projection tuning (geoNaturalEarth1, calibrated to current CSS aspect ratio)
+  PROJ_SCALE:  7.2,
+  PROJ_X:      2.1,
+  PROJ_Y:      1.95,
+  // Zoom
+  ZOOM_MIN:    1,
+  ZOOM_MAX:    8,
+  // Panel
+  PANEL_FLOWS: 30,    // max flow rows shown in side panel
+};
 
 // ── Color scales ───────────────────────────────────────────────────────────
 // ±$1M = neutral grey. Beyond that, log-scale so small traders still get color.
 // Log scale compresses Brazil's $11B dominance and spreads the middle range.
-const NEUTRAL_BAND = 1; // $1M in millions
+const NEUTRAL_BAND  = 1;         // $1M in millions
 const NEUTRAL_COLOR = '#cdd1d9'; // light blue-grey
 const netColorScale = (net, maxAbs) => {
   const absNet = Math.abs(net);
   if (absNet <= NEUTRAL_BAND) return NEUTRAL_COLOR;
-  // Log-scale t: 0 = just above neutral, 1 = maxAbs
   const t = Math.min(
     Math.log(absNet / NEUTRAL_BAND) / Math.log(Math.max(maxAbs / NEUTRAL_BAND, 2)),
     1
   );
-  if (net > 0) {
-    return d3.interpolate(NEUTRAL_COLOR, '#2da44e')(t);
-  } else {
-    return d3.interpolate(NEUTRAL_COLOR, '#3b82f6')(t);
-  }
+  return net > 0
+    ? d3.interpolate(NEUTRAL_COLOR, '#2da44e')(t)
+    : d3.interpolate(NEUTRAL_COLOR, '#3b82f6')(t);
+};
+
+// ── ISO lookup ─────────────────────────────────────────────────────────────
+// Maps world-atlas numeric country IDs (ISO 3166-1 numeric) → ISO3 codes.
+const isoFromNum = {
+  4:'AFG',8:'ALB',12:'DZA',24:'AGO',32:'ARG',36:'AUS',40:'AUT',50:'BGD',56:'BEL',
+  64:'BTN',68:'BOL',76:'BRA',100:'BGR',104:'MMR',116:'KHM',120:'CMR',124:'CAN',
+  140:'CAF',144:'LKA',152:'CHL',156:'CHN',158:'TWN',170:'COL',178:'COG',180:'COD',
+  188:'CRI',191:'HRV',192:'CUB',196:'CYP',203:'CZE',204:'BEN',208:'DNK',214:'DOM',
+  218:'ECU',231:'ETH',233:'EST',246:'FIN',250:'FRA',266:'GAB',276:'DEU',288:'GHA',
+  300:'GRC',320:'GTM',324:'GIN',332:'HTI',340:'HND',344:'HKG',348:'HUN',356:'IND',
+  360:'IDN',364:'IRN',368:'IRQ',372:'IRL',376:'ISR',380:'ITA',388:'JAM',392:'JPN',
+  398:'KAZ',400:'JOR',404:'KEN',408:'PRK',410:'KOR',418:'LAO',422:'LBN',428:'LVA',
+  430:'LBR',434:'LBY',440:'LTU',442:'LUX',454:'MWI',458:'MYS',466:'MLI',484:'MEX',
+  496:'MNG',499:'MNE',504:'MAR',508:'MOZ',516:'NAM',524:'NPL',528:'NLD',554:'NZL',
+  558:'NIC',566:'NGA',578:'NOR',586:'PAK',591:'PAN',598:'PNG',600:'PRY',604:'PER',
+  608:'PHL',616:'POL',620:'PRT',626:'TLS',630:'PRI',634:'QAT',642:'ROU',643:'RUS',
+  646:'RWA',682:'SAU',686:'SEN',694:'SLE',702:'SGP',703:'SVK',705:'SVN',706:'SOM',
+  710:'ZAF',716:'ZWE',724:'ESP',729:'SDN',752:'SWE',756:'CHE',762:'TJK',764:'THA',
+  768:'TGO',780:'TTO',788:'TUN',792:'TUR',800:'UGA',804:'UKR',784:'ARE',826:'GBK',
+  834:'TZA',840:'USA',854:'BFA',858:'URY',860:'UZB',862:'VEN',887:'YEM',894:'ZMB',
+  704:'VNM',807:'MKD',688:'SRB',70:'BIH',72:'BWA',108:'BDI',232:'ERI',270:'GMB',
+  384:'CIV',450:'MDG',462:'MDV',480:'MUS',540:'NCL',562:'NER',132:'CPV',
+  174:'COM',175:'MYT',260:'ATF',748:'SWZ',426:'LSO',226:'GNQ',238:'FLK',
+  826:'GBR',818:'EGY',
 };
 
 // ── Boot ───────────────────────────────────────────────────────────────────
@@ -65,84 +124,54 @@ Promise.all([
   .catch(e => { document.querySelector('.load-txt').textContent = 'Load error: ' + e.message; });
 
 // ── Map init ───────────────────────────────────────────────────────────────
-function initMap(topo) {
-  const wrap = document.getElementById('map-wrap');
+
+function initProjection(wrap) {
   W = wrap.clientWidth; H = wrap.clientHeight;
   svg.attr('viewBox', `0 0 ${W} ${H}`);
-
   projection = d3.geoNaturalEarth1()
-    .scale(W / 7.2).translate([W / 2.1, H / 1.95]);
+    .scale(W / CONFIG.PROJ_SCALE).translate([W / CONFIG.PROJ_X, H / CONFIG.PROJ_Y]);
   pathGen = d3.geoPath().projection(projection);
+}
 
-  // Single container group for all map layers — zoom transform applies here only,
-  // leaving HTML overlays (#panel, #tip, #legend) completely unaffected.
-  const mapG  = svg.append('g');
-  gGraticule  = mapG.append('g');
-  gCountries  = mapG.append('g');
-  gFlows      = mapG.append('g');
+function initLayers() {
+  // Single container group — zoom transform applies here only,
+  // leaving HTML overlays (#panel, #tip, #legend) unaffected.
+  const mapG = svg.append('g');
+  gGraticule = mapG.append('g');
+  gCountries = mapG.append('g');
+  gFlows     = mapG.append('g');
 
-  // Pan + pinch-zoom on the map only
-  const zoom = d3.zoom()
-    .scaleExtent([1, 8])
-    .on('zoom', event => mapG.attr('transform', event.transform));
-  svg.call(zoom);
-
-  // Graticule
   gGraticule.append('path')
     .datum({type:'Sphere'})
     .attr('d', pathGen)
-    .attr('fill','#0d1117').attr('stroke','#21262d').attr('stroke-width',.6);
+    .attr('fill','#0d1117').attr('stroke','#21262d').attr('stroke-width', 0.6);
   gGraticule.append('path')
     .datum(d3.geoGraticule()())
     .attr('d', pathGen)
-    .attr('fill','none').attr('stroke','rgba(255,255,255,.03)').attr('stroke-width',.5);
+    .attr('fill','none').attr('stroke','rgba(255,255,255,.03)').attr('stroke-width', 0.5);
 
-  // Build ISO lookup from world-atlas numeric ids using a comprehensive map
-  const NUM_TO_ISO = {
-    4:'AFG',8:'ALB',12:'DZA',24:'AGO',32:'ARG',36:'AUS',40:'AUT',50:'BGD',56:'BEL',
-    64:'BTN',68:'BOL',76:'BRA',100:'BGR',104:'MMR',116:'KHM',120:'CMR',124:'CAN',
-    140:'CAF',144:'LKA',152:'CHL',156:'CHN',158:'TWN',170:'COL',178:'COG',180:'COD',
-    188:'CRI',191:'HRV',192:'CUB',196:'CYP',203:'CZE',204:'BEN',208:'DNK',214:'DOM',
-    218:'ECU',231:'ETH',233:'EST',246:'FIN',250:'FRA',266:'GAB',276:'DEU',288:'GHA',
-    300:'GRC',320:'GTM',324:'GIN',332:'HTI',340:'HND',344:'HKG',348:'HUN',356:'IND',
-    360:'IDN',364:'IRN',368:'IRQ',372:'IRL',376:'ISR',380:'ITA',388:'JAM',392:'JPN',
-    398:'KAZ',400:'JOR',404:'KEN',408:'PRK',410:'KOR',418:'LAO',422:'LBN',428:'LVA',
-    430:'LBR',434:'LBY',440:'LTU',442:'LUX',454:'MWI',458:'MYS',466:'MLI',484:'MEX',
-    496:'MNG',499:'MNE',504:'MAR',508:'MOZ',516:'NAM',524:'NPL',528:'NLD',554:'NZL',
-    558:'NIC',566:'NGA',578:'NOR',586:'PAK',591:'PAN',598:'PNG',600:'PRY',604:'PER',
-    608:'PHL',616:'POL',620:'PRT',626:'TLS',630:'PRI',634:'QAT',642:'ROU',643:'RUS',
-    646:'RWA',682:'SAU',686:'SEN',694:'SLE',702:'SGP',703:'SVK',705:'SVN',706:'SOM',
-    710:'ZAF',716:'ZWE',724:'ESP',729:'SDN',752:'SWE',756:'CHE',762:'TJK',764:'THA',
-    768:'TGO',780:'TTO',788:'TUN',792:'TUR',800:'UGA',804:'UKR',784:'ARE',826:'GBK',
-    834:'TZA',840:'USA',854:'BFA',858:'URY',860:'UZB',862:'VEN',887:'YEM',894:'ZMB',
-    704:'VNM',807:'MKD',688:'SRB',70:'BIH',72:'BWA',108:'BDI',232:'ERI',270:'GMB',
-    384:'CIV',450:'MDG',462:'MDV',480:'MUS',540:'NCL',562:'NER',630:'PRI',132:'CPV',
-    174:'COM',175:'MYT',260:'ATF',748:'SWZ',426:'LSO',226:'GNQ',238:'FLK',
-    826:'GBR',818:'EGY',
-  };
-  isoFromNum = NUM_TO_ISO;
+  return mapG;
+}
 
-  const features = topojson.feature(topo, topo.objects.countries).features;
+function initZoom(mapG) {
+  const zoom = d3.zoom()
+    .scaleExtent([CONFIG.ZOOM_MIN, CONFIG.ZOOM_MAX])
+    .on('zoom', event => mapG.attr('transform', event.transform));
+  svg.call(zoom);
+  return zoom;
+}
 
-  // Pre-compute centroids
+function buildCentroids(features) {
   features.forEach(f => {
-    const iso = NUM_TO_ISO[+f.id];
+    const iso = isoFromNum[+f.id];
     if (iso) {
       const c = pathGen.centroid(f);
       if (c && !isNaN(c[0]) && !isNaN(c[1])) centroidMap[iso] = c;
     }
   });
+}
 
-  // Draw countries
-  const countries = gCountries.selectAll('.country')
-    .data(features)
-    .join('path')
-    .attr('class','country')
-    .attr('d', pathGen)
-    .attr('fill','#1c2128');
-
-  // Touch devices: tap country to show detail, tap SVG background to dismiss.
-  // Desktop: mousemove/mouseleave for hover detail.
+function bindCountryHandlers(countries) {
   // d3.zoom distinguishes a tap (no movement) from a drag, so 'click' fires correctly on mobile.
   if (window.matchMedia('(hover: none)').matches) {
     countries.on('click', (event, d) => {
@@ -163,29 +192,51 @@ function initMap(topo) {
       if (pinnedCountry) { pinnedCountry = null; render(); }
     });
   }
+}
 
-  // Show hint with device-appropriate text; dismiss on first country interaction
+function initHint() {
   const hint = document.getElementById('hint');
   hint.textContent = window.matchMedia('(hover: none)').matches
     ? 'Touch a Country to highlight Trade Flows'
     : 'Select a Country to highlight Trade Flows';
   hint.classList.add('vis');
+}
 
-  // Resize handler — reset zoom so the new viewBox matches the reset state
+function initResize(wrap, zoom, features) {
   window.addEventListener('resize', () => {
     W = wrap.clientWidth; H = wrap.clientHeight;
     svg.attr('viewBox', `0 0 ${W} ${H}`);
-    projection.scale(W/7.2).translate([W/2.1, H/1.95]);
+    projection.scale(W / CONFIG.PROJ_SCALE).translate([W / CONFIG.PROJ_X, H / CONFIG.PROJ_Y]);
     svg.call(zoom.transform, d3.zoomIdentity);
-    // Recompute centroids
     features.forEach(f => {
-      const iso = NUM_TO_ISO[+f.id];
-      if (iso) { const c = pathGen.centroid(f); if(c&&!isNaN(c[0])) centroidMap[iso]=c; }
+      const iso = isoFromNum[+f.id];
+      if (iso) { const c = pathGen.centroid(f); if (c && !isNaN(c[0])) centroidMap[iso] = c; }
     });
     gCountries.selectAll('.country').attr('d', pathGen);
     gGraticule.selectAll('path').attr('d', pathGen);
     render();
   });
+}
+
+function initMap(topo) {
+  const wrap = document.getElementById('map-wrap');
+  initProjection(wrap);
+  const mapG = initLayers();
+  const zoom = initZoom(mapG);
+
+  const features = topojson.feature(topo, topo.objects.countries).features;
+  buildCentroids(features);
+
+  const countries = gCountries.selectAll('.country')
+    .data(features)
+    .join('path')
+    .attr('class', 'country')
+    .attr('d', pathGen)
+    .attr('fill', '#1c2128');
+
+  bindCountryHandlers(countries);
+  initHint();
+  initResize(wrap, zoom, features);
 }
 
 // ── Main render ────────────────────────────────────────────────────────────
@@ -198,23 +249,20 @@ function render() {
   document.getElementById('yr-lbl').textContent = year;
   document.getElementById('year-slider').value = yi;
 
-  // Compute maxAbs net for this year (for color scale)
   const netVals = Object.values(yd.countries).map(d => Math.abs(d.net));
   const maxAbs = d3.max(netVals) || 1;
 
   // Choropleth — net exporter green, net importer blue
-  // Only update fill colors; never touch .dimmed here (that's hover-only)
   const pinnedISO = pinnedCountry ? isoFromNum[+pinnedCountry.id] : null;
   gCountries.selectAll('.country')
     .attr('fill', d => {
       const iso = isoFromNum[+d.id];
       const c = iso && yd.countries[iso];
-      if (!c) return '#2d333b';  // no data: dark grey
+      if (!c) return '#2d333b';
       return netColorScale(c.net, maxAbs);
     })
     .classed('dimmed', dd => pinnedISO ? isoFromNum[+dd.id] !== pinnedISO : false);
 
-  // Legend gradient
   drawLegendGradient(maxAbs);
 
   // Flows — normal mode draws all arcs; highlighted mode draws only selected arcs
@@ -234,8 +282,7 @@ function render() {
     drawFlowsNormal(flows);
   }
 
-  // Panel
-  updatePanel(yd.flows.slice(0, 30));
+  updatePanel(yd.flows.slice(0, CONFIG.PANEL_FLOWS));
 }
 
 // ── Legend gradient ────────────────────────────────────────────────────────
@@ -245,8 +292,8 @@ function drawLegendGradient(maxAbs) {
   const w = canvas.width;
   // Left = max importer, center = neutral, right = max exporter
   for (let i = 0; i < w; i++) {
-    const t = i / (w - 1);              // 0 (left/blue) → 1 (right/green)
-    const net = (t - 0.5) * 2 * maxAbs; // -maxAbs … +maxAbs
+    const t = i / (w - 1);
+    const net = (t - 0.5) * 2 * maxAbs;
     ctx.fillStyle = netColorScale(net, maxAbs);
     ctx.fillRect(i, 0, 1, 7);
   }
@@ -261,10 +308,10 @@ function drawLegendGradient(maxAbs) {
 function arcGeom(src, tgt) {
   const dx = tgt[0] - src[0], dy = tgt[1] - src[1];
   const dist = Math.sqrt(dx*dx + dy*dy);
-  const bend = dist * 0.22;
+  const bend = dist * CONFIG.ARC_BEND;
   const mx = (src[0]+tgt[0])/2 - dy * bend / (dist||1);
   const my = (src[1]+tgt[1])/2 + dx * bend / (dist||1);
-  const t = 0.88;
+  const t  = CONFIG.ARC_END_T;
   const ex = (1-t)*(1-t)*src[0] + 2*(1-t)*t*mx + t*t*tgt[0];
   const ey = (1-t)*(1-t)*src[1] + 2*(1-t)*t*my + t*t*tgt[1];
   return `M ${src[0]},${src[1]} Q ${mx},${my} ${ex},${ey}`;
@@ -273,16 +320,16 @@ function arcGeom(src, tgt) {
 // Normal mode: all arcs at natural opacity, gold color, size-based markers
 function drawFlowsNormal(flows) {
   gFlows.selectAll('*').remove();
-  const maxV  = d3.max(flows, d => d.v) || 1;
-  const wScale = d3.scaleSqrt().domain([0, maxV]).range([0.5, 5]).clamp(true);
-  const opScale = d3.scaleLinear().domain([0, maxV]).range([0.12, 0.72]).clamp(true);
+  const maxV   = d3.max(flows, d => d.v) || 1;
+  const wScale  = d3.scaleSqrt().domain([0, maxV]).range([CONFIG.STROKE_MIN, CONFIG.STROKE_MAX]).clamp(true);
+  const opScale = d3.scaleLinear().domain([0, maxV]).range([CONFIG.OPACITY_MIN, CONFIG.OPACITY_MAX]).clamp(true);
 
   flows.forEach((d, i) => {
     const src = centroidMap[d.ei];
     const tgt = centroidMap[d.ii];
     if (!src || !tgt) return;
     const sw = wScale(d.v);
-    const marker = sw > 3.5 ? 'arr-lg' : sw > 1.8 ? 'arr-md' : 'arr-sm';
+    const marker = sw > CONFIG.MARKER_LG ? 'arr-lg' : sw > CONFIG.MARKER_MD ? 'arr-md' : 'arr-sm';
 
     const path = gFlows.append('path')
       .attr('class', 'flow-arc')
@@ -295,7 +342,7 @@ function drawFlowsNormal(flows) {
       .datum(d);
 
     path.transition()
-      .delay(i * 15).duration(450).ease(d3.easeCubicOut)
+      .delay(i * CONFIG.ARC_STAGGER).duration(CONFIG.ARC_DURATION).ease(d3.easeCubicOut)
       .attr('stroke-opacity', opScale(d.v));
 
     path.on('mousemove', event => showFlowTip(event, d))
@@ -312,7 +359,7 @@ function drawFlowsNormal(flows) {
 function drawFlowsHighlighted(arcs) {
   gFlows.selectAll('*').remove();
   const maxV  = d3.max(arcs, d => d.v) || 1;
-  const wScale = d3.scaleSqrt().domain([0, maxV]).range([0.5, 5]).clamp(true);
+  const wScale = d3.scaleSqrt().domain([0, maxV]).range([CONFIG.STROKE_MIN, CONFIG.STROKE_MAX]).clamp(true);
 
   arcs.forEach((d, i) => {
     const src = centroidMap[d.ei];
@@ -330,8 +377,8 @@ function drawFlowsHighlighted(arcs) {
       .datum(d);
 
     path.transition()
-      .delay(i * 15).duration(450).ease(d3.easeCubicOut)
-      .attr('stroke-opacity', 0.92);
+      .delay(i * CONFIG.ARC_STAGGER).duration(CONFIG.ARC_DURATION).ease(d3.easeCubicOut)
+      .attr('stroke-opacity', CONFIG.OPACITY_HI);
 
     path.on('mousemove', event => showFlowTip(event, d))
         .on('mouseleave', () => {
@@ -369,7 +416,7 @@ function onCountryHover(event, d) {
   const c = yd.countries[iso];
   const name = (c && c.n) || nameFromISO[iso] || iso;
   if (c) {
-    const netCls = c.net >= 0 ? 'tip-net-pos' : 'tip-net-neg';
+    const netCls  = c.net >= 0 ? 'tip-net-pos' : 'tip-net-neg';
     const netSign = c.net >= 0 ? '+' : '';
     tip.innerHTML = `
       <div class="tip-name">${name}</div>
@@ -485,15 +532,15 @@ document.getElementById('flow-top10').addEventListener('click', () => {
 });
 
 // ── Panel toggle ───────────────────────────────────────────────────────────
-// Panel always starts open. [≡] in panel header manually collapses/expands the list.
 const panel = document.getElementById('panel');
 document.getElementById('panel-toggle').addEventListener('click', () => {
   panel.classList.toggle('panel-collapsed');
 });
 
 // ── Legend drag-to-corner ──────────────────────────────────────────────────
-// Drag legend to reposition. Under 20px travel → snaps back to origin.
-// Over 20px → snaps to nearest of three corners. Persists via localStorage.
+// Drag legend to reposition. Under 10px travel → snaps back to origin.
+// Over 10px → dot product of drag direction vs corner direction determines winner.
+// Persists via localStorage.
 (function() {
   const legend    = document.getElementById('legend');
   const CLASS     = { tl: 'leg-tl', br: 'leg-br' }; // bl = no extra class (base style)
@@ -509,25 +556,21 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
   function applyPos(pos) {
     legend.classList.remove('leg-tl', 'leg-br');
     if (CLASS[pos]) legend.classList.add(CLASS[pos]);
-    // Clear inline drag styles so CSS corner classes take over
     legend.style.left = legend.style.top = legend.style.right = legend.style.bottom = '';
   }
 
-  // Restore saved position instantly on load (no transition yet)
   const saved = localStorage.getItem(KEY);
   if (saved && (saved === 'tl' || saved === 'br')) applyPos(saved);
 
-  // Drag state
   let dragging = false, startX = 0, startY = 0, grabX = 0, grabY = 0, originPos = 'bl';
 
   legend.addEventListener('pointerdown', e => {
     e.preventDefault();
-    const mapRect = document.getElementById('map-wrap').getBoundingClientRect();
     const legRect = legend.getBoundingClientRect();
-    grabX    = e.clientX - legRect.left;   // where within legend we grabbed
-    grabY    = e.clientY - legRect.top;
-    startX   = e.clientX;
-    startY   = e.clientY;
+    grabX     = e.clientX - legRect.left;
+    grabY     = e.clientY - legRect.top;
+    startX    = e.clientX;
+    startY    = e.clientY;
     originPos = getCurrentPos();
     dragging  = true;
     legend.classList.add('leg-dragging');
@@ -546,15 +589,11 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
   function endDrag(e) {
     if (!dragging) return;
     dragging = false;
-    legend.classList.remove('leg-dragging'); // re-enables transition
+    legend.classList.remove('leg-dragging');
 
     const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
-    if (dist < THRESHOLD) {
-      applyPos(originPos); // snap back
-      return;
-    }
+    if (dist < THRESHOLD) { applyPos(originPos); return; }
 
-    // Pick corner whose direction from origin best matches the drag direction (dot product)
     const mapRect = document.getElementById('map-wrap').getBoundingClientRect();
     const legRect = legend.getBoundingClientRect();
     const lw = legRect.width, lh = legRect.height, p = 14;
@@ -568,8 +607,8 @@ document.getElementById('panel-toggle').addEventListener('click', () => {
     const [ox, oy] = anchors[originPos];
     let nearest = 'bl', best = -Infinity;
     for (const [pos, [ax, ay]] of Object.entries(anchors)) {
-      if (pos === originPos) continue; // never snap back to where you started
-      const score = dx * (ax - ox) + dy * (ay - oy); // dot product: drag · direction-to-corner
+      if (pos === originPos) continue;
+      const score = dx * (ax - ox) + dy * (ay - oy);
       if (score > best) { best = score; nearest = pos; }
     }
     applyPos(nearest);
